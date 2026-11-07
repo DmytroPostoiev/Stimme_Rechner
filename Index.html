@@ -1,0 +1,352 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stimmenauswertung</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+    font-family: Arial, sans-serif;
+    background: #f1f4f8;
+    padding: 20px;
+    color: #222;
+}
+
+.container {
+    max-width: 1000px;
+    margin: auto;
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+}
+
+h1, h2 {
+    text-align: center;
+    color: #204b78;
+}
+
+.table-wrap {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+
+th, td {
+    border: 1px solid #ccc;
+    padding: 12px 6px;
+    text-align: center;
+}
+
+th {
+    background: #245b91;
+    color: white;
+}
+
+input {
+    width: 65px;
+    padding: 8px;
+    text-align: center;
+    font-size: 16px;
+    border: 1px solid #bbb;
+    border-radius: 5px;
+}
+
+.total {
+    background: #dcefe2;
+    font-weight: bold;
+}
+
+.result {
+    background: #eaf3ff;
+    padding: 15px;
+    margin-top: 15px;
+    border-radius: 10px;
+}
+
+.result-item {
+    padding: 12px;
+    margin: 8px 0;
+    background: white;
+    border-radius: 7px;
+    border-left: 5px solid #245b91;
+}
+
+.bar {
+    height: 16px;
+    background: #ddd;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 7px;
+}
+
+.bar-fill {
+    height: 100%;
+    background: #287ac0;
+    transition: width 0.3s;
+}
+
+.winner-box {
+    background: #dff5e5;
+    border-left: 5px solid #159447;
+    padding: 18px;
+    border-radius: 8px;
+    margin-top: 15px;
+    text-align: center;
+}
+
+button {
+    background: #245b91;
+    color: white;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-top: 20px;
+}
+
+@media(max-width: 600px) {
+    .container { padding: 10px; }
+    table { min-width: 600px; }
+    th, td { padding: 8px 4px; font-size: 12px; }
+    input { width: 48px; padding: 5px 2px; }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1></h1>
+<h2></h2>
+
+<div class="table-wrap">
+<table>
+
+<thead>
+<tr>
+    <th>Gruppe</th>
+    <th>12:30 Uhr</th>
+    <th>14:00 Uhr</th>
+    <th>16:00 Uhr</th>
+    <th>Gesamt</th>
+</tr>
+</thead>
+
+<tbody id="tableBody"></tbody>
+
+<tfoot>
+<tr class="total">
+    <td>GESAMT</td>
+    <td id="sum0">0</td>
+    <td id="sum1">0</td>
+    <td id="sum2">0</td>
+    <td id="grandTotal">0</td>
+</tr>
+</tfoot>
+
+</table>
+</div>
+
+<h2></h2>
+<div class="result" id="results"></div>
+
+<div class="winner-box">
+    <h2></h2>
+    <h3 id="winner"></h3>
+    <p id="winnerDetails"></p>
+</div>
+
+<button onclick="resetTable()">Leer</button>
+
+</div>
+
+<script>
+
+const times = [
+    "12:30 Uhr",
+    "14:00 Uhr",
+    "16:00 Uhr"
+];
+
+const groups = [
+    "Kandern",
+    "Hügelheim",
+    "Müllheim Süd",
+    "Weil",
+    "Neuenburg",
+    "Müllheim West"
+];
+
+const body = document.getElementById("tableBody");
+
+// Tabelle erstellen: Gruppen links, Uhrzeiten oben
+
+groups.forEach((group, groupIndex) => {
+
+    body.innerHTML += `
+        <tr>
+            <td><strong>${group}</strong></td>
+
+            ${times.map((time, timeIndex) => `
+                <td>
+                    <input
+                        type="text"
+                        min="0"
+                        step="1"
+                        value="0"
+                        data-group="${groupIndex}"
+                        data-time="${timeIndex}"
+                        oninput="calculate()"
+                    >
+                </td>
+            `).join("")}
+
+            <td class="total groupTotal">0</td>
+        </tr>
+    `;
+
+});
+
+
+// Berechnung
+
+function calculate() {
+
+    let timeSums = [0, 0, 0];
+    let groupSums = Array(groups.length).fill(0);
+
+    const rows = body.querySelectorAll("tr");
+
+    rows.forEach((row, groupIndex) => {
+
+        const inputs = row.querySelectorAll("input");
+
+        inputs.forEach(input => {
+
+            let value = Math.max(
+                0,
+                Math.floor(Number(input.value) || 0)
+            );
+
+            input.value = value;
+
+            const timeIndex = Number(input.dataset.time);
+
+            timeSums[timeIndex] += value;
+            groupSums[groupIndex] += value;
+
+        });
+
+        row.querySelector(".groupTotal").textContent =
+            groupSums[groupIndex];
+
+    });
+
+    const total = timeSums.reduce((a, b) => a + b, 0);
+
+    // Gesamtsummen unten
+
+    timeSums.forEach((sum, index) => {
+        document.getElementById("sum" + index).textContent = sum;
+    });
+
+    document.getElementById("grandTotal").textContent = total;
+
+    // Prozentberechnung
+
+    const results = document.getElementById("results");
+    results.innerHTML = "";
+
+    times.forEach((time, index) => {
+
+        const percent = total > 0
+            ? timeSums[index] / total * 100
+            : 0;
+
+        results.innerHTML += `
+            <div class="result-item">
+                <strong>${time}</strong>
+
+                <p>Stimmen: <strong>${timeSums[index]}</strong></p>
+
+                <p>Anteil: <strong>${percent.toFixed(2)} %</strong></p>
+
+                <div class="bar">
+                    <div class="bar-fill"
+                    style="width:${percent}%"></div>
+                </div>
+            </div>
+        `;
+
+    });
+
+    // Meistgewählte Uhrzeit
+
+    const winner = document.getElementById("winner");
+    const details = document.getElementById("winnerDetails");
+
+    if(total === 0) {
+        winner.textContent = "Noch keine Stimmen";
+        details.textContent = "";
+        return;
+    }
+
+    const maxVotes = Math.max(...timeSums);
+
+    const winners = timeSums
+        .map((votes, index) => ({votes, index}))
+        .filter(item => item.votes === maxVotes);
+
+    if(winners.length === 1) {
+
+        const index = winners[0].index;
+        const percent = (maxVotes / total * 100).toFixed(2);
+
+        winner.textContent = times[index] + " gewinnt! 🏆";
+
+        details.textContent =
+            maxVotes + " Stimmen (" + percent + " %)";
+
+    } else {
+
+        winner.textContent = "Unentschieden!";
+
+        details.textContent =
+            winners.map(item => times[item.index]).join(" und ") +
+            " mit jeweils " + maxVotes + " Stimmen";
+
+    }
+
+}
+
+
+// Zurücksetzen
+
+function resetTable() {
+
+    if(confirm("Alle Stimmen wirklich zurücksetzen?")) {
+
+        document.querySelectorAll("#tableBody input").forEach(input => {
+            input.value = 0;
+        });
+
+        calculate();
+    }
+
+}
+
+calculate();
+
+</script>
+
+</body>
+</html>
